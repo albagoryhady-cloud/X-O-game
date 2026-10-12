@@ -141,7 +141,6 @@
             font-size: 0.75rem;
         }
         .badge-open { background: #2ed573; color: #1e1e2f; }
-        .badge-full { background: #ff4757; color: #fff; }
         .btn-join-sm {
             padding: 5px 12px;
             border: none;
@@ -315,8 +314,8 @@
             <input type="text" id="p1-input" value="اللاعب 1" placeholder="أدخل اسمك">
         </div>
 
-        <div class="input-group">
-            <label>اختر رمزك:</label>
+        <div class="input-group" id="symbol-select-group">
+            <label>اختر رمزك (للهوست / اللعب الفردي):</label>
             <div class="select-toggle-container">
                 <button id="sym-x-btn" type="button" class="toggle-btn active-x" onclick="selectSymbol('X')">X</button>
                 <button id="sym-o-btn" type="button" class="toggle-btn" onclick="selectSymbol('O')">O</button>
@@ -462,7 +461,8 @@
 
         let gameMode = 'pvp';
         let userSymbol = 'X';
-        let myRole = 'X';
+        let playerRole = 'p1'; // 'p1' للهوست، 'p2' للضيف
+        let mySymbol = 'X';
         let aiSymbol = 'O';
         let isPublicRoom = true;
         let currentRoomId = null;
@@ -572,20 +572,23 @@
         }
 
         function createOnlineRoom() {
-            p1Name = p1Input.value.trim() || 'اللاعب 1';
-            myRole = userSymbol;
+            p1Name = p1Input.value.trim() || 'الهوست';
+            playerRole = 'p1';
+            mySymbol = userSymbol;
+            const guestSymbol = userSymbol === 'X' ? 'O' : 'X';
+
             currentRoomId = Math.floor(1000 + Math.random() * 9000).toString();
 
             const roomRef = db.ref('rooms/' + currentRoomId);
             
-            // حذف الغرفة عند انقطاع الاتصال
+            // الهوست إذا قطع الاتصال تُحذف الغرفة بالكامل
             roomRef.onDisconnect().remove();
 
             roomRef.set({
-                p1Name: `${p1Name} (${userSymbol})`,
+                p1Name: p1Name,
                 p2Name: 'في الانتظار...',
-                p1Symbol: userSymbol,
-                p2Symbol: userSymbol === 'X' ? 'O' : 'X',
+                p1Symbol: mySymbol,
+                p2Symbol: guestSymbol,
                 isPublic: isPublicRoom,
                 boardState: ['', '', '', '', '', '', '', '', ''],
                 currentPlayer: 'X',
@@ -617,12 +620,15 @@
                     alert('الغرفة ممتلئة بالكامل!');
                     return;
                 }
-                myRole = data.p2Symbol;
-                const p2NameRaw = p1Input.value.trim() || 'اللاعب 2';
-                p2Name = `${p2NameRaw} (${myRole})`;
+
+                playerRole = 'p2';
+                mySymbol = data.p2Symbol; // يأخذ الرمز المتبقي تلقائياً
+                p2Name = p1Input.value.trim() || 'الضيف';
                 currentRoomId = code;
 
-                roomRef.onDisconnect().cancel();
+                // الضيف إذا قطع الاتصال يعود المكان لـ "في الانتظار..."
+                db.ref('rooms/' + code + '/p2Name').onDisconnect().set('في الانتظار...');
+                db.ref('rooms/' + code + '/isGameActive').onDisconnect().set(false);
 
                 roomRef.update({
                     p2Name: p2Name,
@@ -645,7 +651,7 @@
         function requestSymbolSwap() {
             if (!currentRoomId || !isGameActive) return;
             db.ref('rooms/' + currentRoomId + '/swapRequest').set({
-                requestedBy: myRole,
+                requestedBy: playerRole,
                 status: 'pending'
             });
             alert('تم إرسال طلب تبديل الرموز إلى المنافس... ⏳');
@@ -657,17 +663,10 @@
                 db.ref('rooms/' + currentRoomId).once('value', snapshot => {
                     const data = snapshot.val();
                     if (!data) return;
-                    const oldP1Sym = data.p1Symbol;
-                    const oldP2Sym = data.p2Symbol;
                     
-                    let p1NameClean = data.p1Name.replace(` (${oldP1Sym})`, '');
-                    let p2NameClean = data.p2Name.replace(` (${oldP2Sym})`, '');
-
                     db.ref('rooms/' + currentRoomId).update({
-                        p1Symbol: oldP2Sym,
-                        p2Symbol: oldP1Sym,
-                        p1Name: `${p1NameClean} (${oldP2Sym})`,
-                        p2Name: `${p2NameClean} (${oldP1Sym})`,
+                        p1Symbol: data.p2Symbol,
+                        p2Symbol: data.p1Symbol,
                         swapRequest: { status: 'accepted' }
                     });
                 });
@@ -682,35 +681,30 @@
             db.ref('rooms/' + currentRoomId).on('value', snapshot => {
                 const data = snapshot.val();
                 
-                // إذا تم حذف الغرفة أو خرج المنافس
+                // إذا قام الهوست بحذف الغرفة أو أُغلقت
                 if (!data) {
-                    alert('تم إغلاق الغرفة أو غادر المنافس المباراة! 🚪');
+                    alert('تم إغلاق الغرفة أو غادر الهوست المباراة! 🚪');
                     backToMenu();
                     return;
                 }
 
-                p1Name = data.p1Name;
-                p2Name = data.p2Name;
+                p1Name = data.p1Name || 'الهوست';
+                p2Name = data.p2Name || 'في الانتظار...';
                 boardState = data.boardState || ['', '', '', '', '', '', '', '', ''];
                 currentPlayer = data.currentPlayer;
                 isGameActive = data.isGameActive;
                 scores = data.scores || { p1: 0, p2: 0, ties: 0 };
 
-                if (data.p1Symbol && data.p2Symbol) {
-                    const myCleanName = p1Input.value.trim() || 'اللاعب 1';
-                    if (data.p1Name.includes(myCleanName)) {
-                        myRole = data.p1Symbol;
-                    } else {
-                        myRole = data.p2Symbol;
-                    }
-                }
+                // تحديث الرمز الحالي بناءً على الدور الثابت (p1 للهوست، p2 للضيف)
+                mySymbol = playerRole === 'p1' ? data.p1Symbol : data.p2Symbol;
 
-                nameP1Display.textContent = p1Name;
-                nameP2Display.textContent = p2Name;
+                nameP1Display.textContent = `${p1Name} (${data.p1Symbol})`;
+                nameP2Display.textContent = p2Name !== 'في الانتظار...' ? `${p2Name} (${data.p2Symbol})` : p2Name;
                 updateScoreUI();
 
+                // معالجة بنر طلب تبديل الرموز
                 if (data.swapRequest && data.swapRequest.status === 'pending') {
-                    if (data.swapRequest.requestedBy !== myRole) {
+                    if (data.swapRequest.requestedBy !== playerRole) {
                         swapBanner.classList.remove('hidden');
                     }
                 } else {
@@ -726,9 +720,8 @@
                     if (data.winner === 'tie') {
                         statusText.textContent = '🤝 تعادل!';
                     } else {
-                        const winnerName = data.winner === 'X' ? 
-                            (data.p1Symbol === 'X' ? p1Name : p2Name) : 
-                            (data.p1Symbol === 'O' ? p1Name : p2Name);
+                        const winnerSymbol = data.winner;
+                        const winnerName = (winnerSymbol === data.p1Symbol) ? p1Name : p2Name;
                         statusText.textContent = `🎉 الفائز هو ${winnerName}!`;
                     }
                     if (data.winIndex !== undefined && data.winIndex !== null) {
@@ -746,12 +739,13 @@
         }
 
         function startGame() {
-            p1Name = `${p1Input.value.trim() || 'اللاعب 1'} (${userSymbol})`;
-            const otherSymbol = userSymbol === 'X' ? 'O' : 'X';
-            p2Name = `${p2Input.value.trim() || (gameMode === 'ai' ? 'Zenith' : 'اللاعب 2')} (${otherSymbol})`;
+            p1Name = p1Input.value.trim() || 'اللاعب 1';
+            mySymbol = userSymbol;
+            aiSymbol = userSymbol === 'X' ? 'O' : 'X';
+            p2Name = p2Input.value.trim() || (gameMode === 'ai' ? 'Zenith' : 'اللاعب 2');
 
-            nameP1Display.textContent = p1Name;
-            nameP2Display.textContent = p2Name;
+            nameP1Display.textContent = `${p1Name} (${mySymbol})`;
+            nameP2Display.textContent = `${p2Name} (${aiSymbol})`;
 
             scores = { p1: 0, p2: 0, ties: 0 };
             updateScoreUI();
@@ -766,9 +760,19 @@
 
         function backToMenu() {
             if (currentRoomId && gameMode === 'online') {
-                // حذف الغرفة فوراً عند العودة للقائمة
-                db.ref('rooms/' + currentRoomId).off();
-                db.ref('rooms/' + currentRoomId).remove();
+                const roomRef = db.ref('rooms/' + currentRoomId);
+                roomRef.off();
+
+                if (playerRole === 'p1') {
+                    // الهوست ينظف ويحذف الغرفة بالكامل عند خروجه
+                    roomRef.remove();
+                } else {
+                    // الضيف يخرج وتعود الغرفة لحالة الانتظار لللاعب التالي
+                    roomRef.update({
+                        p2Name: 'في الانتظار...',
+                        isGameActive: false
+                    });
+                }
                 currentRoomId = null;
             }
             gameScreen.classList.add('hidden');
@@ -783,9 +787,9 @@
             if (boardState[index] !== '' || !isGameActive) return;
 
             if (gameMode === 'online') {
-                if (currentPlayer !== myRole) return;
+                if (currentPlayer !== mySymbol) return; // ليس دورك
                 
-                boardState[index] = myRole;
+                boardState[index] = mySymbol;
                 checkOnlineResult(index);
             } else {
                 makeMove(index, currentPlayer);
@@ -829,7 +833,7 @@
                 updates.winner = currentPlayer;
                 updates.winIndex = winIndex;
                 updates.isGameActive = false;
-                if (currentPlayer === myRole) scores.p1++; else scores.p2++;
+                if (currentPlayer === mySymbol) scores.p1++; else scores.p2++;
                 updates.scores = scores;
             } else if (!boardState.includes('')) {
                 scores.ties++;
@@ -943,14 +947,25 @@
         }
 
         function updateTurnUI() {
-            if (currentPlayer === userSymbol) {
-                statusText.textContent = `دور: ${p1Name}`;
-                boxP1.classList.add('active');
-                boxP2.classList.remove('active');
+            if (gameMode === 'online') {
+                statusText.textContent = (currentPlayer === mySymbol) ? 'دورك الآن 🎯' : 'دور المنافس ⏳';
+                if (currentPlayer === mySymbol) {
+                    boxP1.classList.toggle('active', playerRole === 'p1');
+                    boxP2.classList.toggle('active', playerRole === 'p2');
+                } else {
+                    boxP1.classList.toggle('active', playerRole === 'p2');
+                    boxP2.classList.toggle('active', playerRole === 'p1');
+                }
             } else {
-                statusText.textContent = `دور: ${p2Name}`;
-                boxP2.classList.add('active');
-                boxP1.classList.remove('active');
+                if (currentPlayer === userSymbol) {
+                    statusText.textContent = `دور: ${p1Name}`;
+                    boxP1.classList.add('active');
+                    boxP2.classList.remove('active');
+                } else {
+                    statusText.textContent = `دور: ${p2Name}`;
+                    boxP2.classList.add('active');
+                    boxP1.classList.remove('active');
+                }
             }
         }
 
@@ -964,6 +979,8 @@
             const coords = lineCoords[index];
             winningLine.setAttribute('x1', coords.x1);
             winningLine.setAttribute('y1', coords.y1);
+            winningLine.setAttribute('x2', coords.x2);
+            winningLine.setAttribute('y2', coords.y2);
             winningLine.style.opacity = '1';
         }
 
