@@ -118,6 +118,42 @@
         .toggle-btn.active-x { background: #ff4757; border-color: #ff4757; }
         .toggle-btn.active-o { background: #2ed573; border-color: #2ed573; }
 
+        /* تصميم بطاقات إحصائيات الذكاء الاصطناعي الـ 3 */
+        .ai-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-top: 6px;
+            margin-bottom: 12px;
+        }
+        .ai-stat-card {
+            background: #1e1e2f;
+            border: 1px solid #4e54c8;
+            border-radius: 10px;
+            padding: 8px 4px;
+            font-size: 0.75rem;
+            text-align: center;
+        }
+        .ai-stat-title {
+            font-weight: bold;
+            color: #ffdd59;
+            margin-bottom: 4px;
+            font-size: 0.78rem;
+        }
+        .ai-stat-name {
+            color: #aaa;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+            font-size: 0.72rem;
+        }
+        .ai-stat-count {
+            color: #2ed573;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
         .rooms-list-container {
             margin-top: 12px;
             background: #1e1e2f;
@@ -195,17 +231,6 @@
             font-weight: bold;
         }
 
-        .streak-badge {
-            background: #e67e22;
-            color: #fff;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.82rem;
-            font-weight: bold;
-            margin-bottom: 10px;
-            display: inline-block;
-        }
-
         .timer-box {
             font-size: 1rem;
             font-weight: bold;
@@ -213,7 +238,6 @@
             margin-bottom: 8px;
         }
 
-        /* الشات المصغر */
         .chat-container {
             background: #1e1e2f;
             border-radius: 10px;
@@ -421,6 +445,28 @@
             </div>
         </div>
 
+        <!-- قائمة أفضل الإحصائيات الـ 3 ضد الذكاء الاصطناعي في الشاشة الرئيسية -->
+        <div id="main-ai-stats" class="hidden">
+            <label style="font-size: 0.85rem; color: #ccc; display: block; text-align: right; margin-bottom: 4px;">🏆 الأفضل ضد الذكاء الاصطناعي:</label>
+            <div class="ai-stats-grid">
+                <div class="ai-stat-card">
+                    <div class="ai-stat-title">🌱 مبتدئ</div>
+                    <div class="ai-stat-name" id="stat-easy-name">لا يوجد</div>
+                    <div class="ai-stat-count" id="stat-easy-count">0 انتصارات</div>
+                </div>
+                <div class="ai-stat-card">
+                    <div class="ai-stat-title">⚡ متوسط</div>
+                    <div class="ai-stat-name" id="stat-med-name">لا يوجد</div>
+                    <div class="ai-stat-count" id="stat-med-count">0 انتصارات</div>
+                </div>
+                <div class="ai-stat-card">
+                    <div class="ai-stat-title">🧠 محترف</div>
+                    <div class="ai-stat-name" id="stat-hard-name">لا يوجد</div>
+                    <div class="ai-stat-count" id="stat-hard-count">0 انتصارات</div>
+                </div>
+            </div>
+        </div>
+
         <div class="input-group" id="symbol-select-group">
             <label>اختر رمزك (للهوست / اللعب الفردي):</label>
             <div class="select-toggle-container">
@@ -468,10 +514,6 @@
     <!-- 2. شاشة اللعبة -->
     <div id="game-screen" class="card hidden">
         <h1>لعبة X - O</h1>
-
-        <div id="ai-streak-box" class="hidden">
-            <span id="streak-display" class="streak-badge">🔥 أعلى سلسلة انتصارات: 0</span>
-        </div>
 
         <div id="room-display" class="room-code-badge hidden">
             غرفة: <span id="current-room-code"></span>
@@ -538,7 +580,6 @@
             </div>
         </div>
 
-        <button id="btn-swap-request" class="btn btn-warning hidden" onclick="requestSymbolSwap()">طلب تبديل الرموز 🔄</button>
         <button class="btn btn-secondary" onclick="backToMenu()">القائمة الرئيسية 🏠</button>
 
         <div class="developer-footer">unset The First Step of H~~H</div>
@@ -581,6 +622,7 @@
         const publicRoomsList = document.getElementById('public-rooms-list');
 
         const aiLevelGroup = document.getElementById('ai-level-group');
+        const mainAiStats = document.getElementById('main-ai-stats');
         const lvlEasyBtn = document.getElementById('lvl-easy-btn');
         const lvlMediumBtn = document.getElementById('lvl-medium-btn');
         const lvlHardBtn = document.getElementById('lvl-hard-btn');
@@ -602,8 +644,6 @@
         const btnShareRoom = document.getElementById('btn-share-room');
         const timerBox = document.getElementById('timer-box');
         const timerCountDisplay = document.getElementById('timer-count');
-        const aiStreakBox = document.getElementById('ai-streak-box');
-        const streakDisplay = document.getElementById('streak-display');
 
         const chatContainer = document.getElementById('chat-container');
         const chatMessages = document.getElementById('chat-messages');
@@ -629,8 +669,14 @@
         let turnTimerInterval = null;
         let autoRestartTimer = null;
         let timeLeft = 15;
-        let maxAiWinStreak = parseInt(localStorage.getItem('xo_ai_max_streak') || '0');
+
+        // تتبع انتصارات الذكاء الاصطناعي لكل مستوى
         let currentAiStreak = 0;
+        let aiStats = {
+            easy: { name: 'لا يوجد', count: 0 },
+            medium: { name: 'لا يوجد', count: 0 },
+            hard: { name: 'لا يوجد', count: 0 }
+        };
 
         const winConditions = [
             [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -694,18 +740,44 @@
             }
         }
 
+        loadAiStats();
         listenToPublicRooms();
         checkUrlForRoomJoin();
+
+        function loadAiStats() {
+            const saved = localStorage.getItem('xo_ai_stats_v2');
+            if (saved) {
+                try {
+                    aiStats = JSON.parse(saved);
+                } catch(e) {}
+            }
+            updateAiStatsUI();
+        }
+
+        function updateAiStatsUI() {
+            document.getElementById('stat-easy-name').textContent = aiStats.easy.name || 'لا يوجد';
+            document.getElementById('stat-easy-count').textContent = `${aiStats.easy.count || 0} انتصارات`;
+
+            document.getElementById('stat-med-name').textContent = aiStats.medium.name || 'لا يوجد';
+            document.getElementById('stat-med-count').textContent = `${aiStats.medium.count || 0} انتصارات`;
+
+            document.getElementById('stat-hard-name').textContent = aiStats.hard.name || 'لا يوجد';
+            document.getElementById('stat-hard-count').textContent = `${aiStats.hard.count || 0} انتصارات`;
+        }
+
+        function saveAiStatForCurrentLevel(playerName, streak) {
+            if (streak > (aiStats[aiLevel].count || 0)) {
+                aiStats[aiLevel] = { name: playerName, count: streak };
+                localStorage.setItem('xo_ai_stats_v2', JSON.stringify(aiStats));
+                updateAiStatsUI();
+            }
+        }
 
         function setAiLevel(lvl) {
             aiLevel = lvl;
             lvlEasyBtn.classList.toggle('active', lvl === 'easy');
             lvlMediumBtn.classList.toggle('active', lvl === 'medium');
             lvlHardBtn.classList.toggle('active', lvl === 'hard');
-        }
-
-        function updateStreakUI() {
-            streakDisplay.textContent = `🔥 أعلى سلسلة ضد الذكاء (${aiLevel}): ${maxAiWinStreak}`;
         }
 
         function checkUrlForRoomJoin() {
@@ -746,6 +818,7 @@
                 onlineOptions.classList.remove('hidden');
                 localOptions.classList.add('hidden');
                 aiLevelGroup.classList.add('hidden');
+                mainAiStats.classList.add('hidden');
             } else {
                 onlineOptions.classList.add('hidden');
                 localOptions.classList.remove('hidden');
@@ -753,10 +826,12 @@
                     p2Input.value = 'Zenith';
                     p2Input.disabled = true;
                     aiLevelGroup.classList.remove('hidden');
+                    mainAiStats.classList.remove('hidden');
                 } else {
                     p2Input.value = 'اللاعب 2';
                     p2Input.disabled = false;
                     aiLevelGroup.classList.add('hidden');
+                    mainAiStats.classList.add('hidden');
                 }
             }
         }
@@ -799,6 +874,11 @@
             });
         }
 
+        function clearChatUI() {
+            chatMessages.innerHTML = '';
+            chatInput.value = '';
+        }
+
         function createOnlineRoom() {
             p1Name = p1Input.value.trim() || 'الهوست';
             playerRole = 'p1';
@@ -806,6 +886,7 @@
             const guestSymbol = userSymbol === 'X' ? 'O' : 'X';
 
             currentRoomId = Math.floor(1000 + Math.random() * 9000).toString();
+            clearChatUI();
 
             const roomRef = db.ref('rooms/' + currentRoomId);
             roomRef.onDisconnect().remove();
@@ -851,6 +932,7 @@
                 mySymbol = data.p2Symbol;
                 p2Name = p1Input.value.trim() || 'الضيف';
                 currentRoomId = code;
+                clearChatUI();
 
                 db.ref('rooms/' + code + '/p2Name').onDisconnect().set('في الانتظار...');
                 db.ref('rooms/' + code + '/isGameActive').onDisconnect().set(false);
@@ -872,7 +954,6 @@
             btnSwapRequest.classList.remove('hidden');
             timerBox.classList.remove('hidden');
             chatContainer.classList.remove('hidden');
-            aiStreakBox.classList.add('hidden');
             setupScreen.classList.add('hidden');
             gameScreen.classList.remove('hidden');
         }
@@ -969,7 +1050,7 @@
                 nameP2Display.textContent = p2Name !== 'في الانتظار...' ? `${p2Name} (${data.p2Symbol})` : p2Name;
                 updateScoreUI();
 
-                // عرض الشات الرسائل الـ 6 الأخيرة
+                // عرض الرسائل الـ 6 الأخيرة في الشات
                 if (data.messages) {
                     chatMessages.innerHTML = '';
                     const msgsArray = Object.values(data.messages).slice(-6);
@@ -1123,6 +1204,7 @@
             nameP2Display.textContent = `${p2Name} (${aiSymbol})`;
 
             scores = { p1: 0, p2: 0, ties: 0 };
+            currentAiStreak = 0;
             updateScoreUI();
 
             roomDisplay.classList.add('hidden');
@@ -1130,13 +1212,6 @@
             btnSwapRequest.classList.add('hidden');
             timerBox.classList.add('hidden');
             chatContainer.classList.add('hidden');
-
-            if (gameMode === 'ai') {
-                aiStreakBox.classList.remove('hidden');
-                updateStreakUI();
-            } else {
-                aiStreakBox.classList.add('hidden');
-            }
 
             setupScreen.classList.add('hidden');
             gameScreen.classList.remove('hidden');
@@ -1356,11 +1431,7 @@
                     scores.p1++;
                     if (gameMode === 'ai') {
                         currentAiStreak++;
-                        if (currentAiStreak > maxAiWinStreak) {
-                            maxAiWinStreak = currentAiStreak;
-                            localStorage.setItem('xo_ai_max_streak', maxAiWinStreak);
-                            updateStreakUI();
-                        }
+                        saveAiStatForCurrentLevel(p1Name, currentAiStreak);
                     }
                 } else {
                     scores.p2++;
@@ -1370,7 +1441,6 @@
                 updateScoreUI();
                 isGameActive = false;
 
-                // إعادة تلقائية بعد 3 ثوانٍ أوفلاين
                 setTimeout(restartGame, 3000);
                 return;
             }
