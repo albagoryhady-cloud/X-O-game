@@ -1195,28 +1195,28 @@
         }
 
         function startGame() {
-            p1Name = p1Input.value.trim() || 'اللاعب 1';
-            mySymbol = userSymbol;
-            aiSymbol = userSymbol === 'X' ? 'O' : 'X';
-            p2Name = p2Input.value.trim() || (gameMode === 'ai' ? 'Zenith' : 'اللاعب 2');
+    p1Name = p1Input ? (p1Input.value.trim() || 'اللاعب 1') : 'اللاعب 1';
+    mySymbol = userSymbol;
+    aiSymbol = userSymbol === 'X' ? 'O' : 'X';
+    p2Name = p2Input ? (p2Input.value.trim() || (gameMode === 'ai' ? 'Zenith' : 'اللاعب 2')) : 'اللاعب 2';
 
-            nameP1Display.textContent = `${p1Name} (${mySymbol})`;
-            nameP2Display.textContent = `${p2Name} (${aiSymbol})`;
+    if (nameP1Display) nameP1Display.textContent = `${p1Name} (${mySymbol})`;
+    if (nameP2Display) nameP2Display.textContent = `${p2Name} (${aiSymbol})`;
 
-            scores = { p1: 0, p2: 0, ties: 0 };
-            currentAiStreak = 0;
-            updateScoreUI();
+    scores = { p1: 0, p2: 0, ties: 0 };
+    currentAiStreak = 0;
+    updateScoreUI();
 
-            roomDisplay.classList.add('hidden');
-            btnShareRoom.classList.add('hidden');
-            btnSwapRequest.classList.add('hidden');
-            timerBox.classList.add('hidden');
-            chatContainer.classList.add('hidden');
+    if (roomDisplay) roomDisplay.classList.add('hidden');
+    if (btnShareRoom) btnShareRoom.classList.add('hidden');
+    if (btnSwapRequest) btnSwapRequest.classList.add('hidden');
+    if (timerBox) timerBox.classList.add('hidden');
+    if (chatContainer) chatContainer.classList.add('hidden');
 
-            setupScreen.classList.add('hidden');
-            gameScreen.classList.remove('hidden');
+    if (setupScreen) setupScreen.classList.add('hidden');
+    if (gameScreen) gameScreen.classList.remove('hidden');
 
-            restartGame();
+    restartGame();
         }
 
         function backToMenu() {
@@ -1499,33 +1499,36 @@
         }
 
         function restartGame() {
-            if (gameMode === 'online') {
-                db.ref('rooms/' + currentRoomId).update({
-                    boardState: ['', '', '', '', '', '', '', '', ''],
-                    currentPlayer: 'X',
-                    isGameActive: true,
-                    winner: null,
-                    winIndex: null,
-                    swapRequest: null
-                });
-            } else {
-                boardState = ['', '', '', '', '', '', '', '', ''];
-                currentPlayer = 'X';
-                isGameActive = true;
-                winningLine.style.opacity = '0';
+    if (gameMode === 'online') {
+        if (currentRoomId) {
+            db.ref('rooms/' + currentRoomId).update({
+                boardState: ['', '', '', '', '', '', '', '', ''],
+                currentPlayer: 'X',
+                isGameActive: true,
+                winner: null,
+                winIndex: null,
+                swapRequest: null
+            });
+        }
+    } else {
+        boardState = ['', '', '', '', '', '', '', '', ''];
+        currentPlayer = 'X';
+        isGameActive = true;
+        
+        if (winningLine) winningLine.style.opacity = '0';
 
-                cells.forEach(cell => {
-                    cell.textContent = '';
-                    cell.classList.remove('x', 'o');
-                });
+        cells.forEach(cell => {
+            cell.textContent = '';
+            cell.classList.remove('x', 'o');
+        });
 
-                updateTurnUI();
+        updateTurnUI();
 
-                if (gameMode === 'ai' && aiSymbol === 'X') {
-                    isGameActive = false;
-                    setTimeout(makeAiMove, 350);
-                }
+        if (gameMode === 'ai' && aiSymbol === 'X') {
+            isGameActive = false;
+            setTimeout(makeAiMove, 350);
             }
+    }
         }
     </script>
 </body>
