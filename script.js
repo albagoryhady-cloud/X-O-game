@@ -1,3 +1,4 @@
+// بيانات Firebase الخاصة بمشروعك[span_2](start_span)[span_2](end_span)
 const firebaseConfig = {
     apiKey: "AIzaSyCSnUy1efc_LTvNKb77aDo5D8hPaTsnLYE",
     authDomain: "xo-online-bb0e2.firebaseapp.com",
@@ -13,6 +14,7 @@ if (!firebase.apps.length) {
 }
 const db = firebase.database();
 
+// عناصر الواجهة DOM
 const setupScreen = document.getElementById('setup-screen');
 const gameScreen = document.getElementById('game-screen');
 const p1Input = document.getElementById('p1-input');
@@ -57,6 +59,7 @@ const chatContainer = document.getElementById('chat-container');
 const chatMessages = document.getElementById('chat-messages');
 const chatInput = document.getElementById('chat-input');
 
+// متغيرات اللعبة
 let gameMode = 'pvp';
 let aiLevel = 'medium';
 let userSymbol = 'X';
@@ -304,6 +307,8 @@ function createOnlineRoom() {
     clearChatUI();
 
     const roomRef = db.ref('rooms/' + currentRoomId);
+    
+    // يمسح الغرفة فقط إذا كان الهوست بمفرده تماماً وانقطع اتصاله[span_3](start_span)[span_3](end_span)
     roomRef.onDisconnect().remove();
 
     roomRef.set({
@@ -348,6 +353,9 @@ function joinOnlineRoom(code) {
         p2Name = p1Input ? (p1Input.value.trim() || 'الضيف') : 'الضيف';
         currentRoomId = code;
         clearChatUI();
+
+        // إلغاء أمر مسح الغرفة الكاملة لأن الضيف انضم بالفعل[span_4](start_span)[span_4](end_span)
+        roomRef.onDisconnect().cancel();
 
         db.ref('rooms/' + code + '/p2Name').onDisconnect().set('في الانتظار...');
         db.ref('rooms/' + code + '/isGameActive').onDisconnect().set(false);
@@ -647,6 +655,9 @@ function backToMenu() {
     if (currentRoomId && gameMode === 'online') {
         const roomRef = db.ref('rooms/' + currentRoomId);
         roomRef.off();
+
+        // إلغاء أي حذف مجدول[span_5](start_span)[span_5](end_span)
+        roomRef.onDisconnect().cancel();
 
         if (playerRole === 'p1') {
             roomRef.once('value', snapshot => {
@@ -954,4 +965,4 @@ function restartGame() {
             setTimeout(makeAiMove, 350);
         }
     }
-}
+                             }
