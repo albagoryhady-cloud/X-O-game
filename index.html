@@ -30,7 +30,7 @@
             border-radius: 20px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
             width: 100%;
-            max-width: 380px;
+            max-width: 400px;
             text-align: center;
         }
         h1 {
@@ -85,30 +85,72 @@
             text-align: center;
         }
 
-        .symbol-select-container {
+        .select-toggle-container {
             display: flex;
             gap: 10px;
             margin-top: 5px;
         }
-        .symbol-btn {
+        .toggle-btn {
             flex: 1;
             padding: 10px;
             border: 2px solid #4e54c8;
             background: #1e1e2f;
             color: #fff;
-            font-size: 1.2rem;
+            font-size: 1rem;
             font-weight: bold;
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s;
         }
-        .symbol-btn.active-x {
-            background: #ff4757;
-            border-color: #ff4757;
+        .toggle-btn.active {
+            background: #4e54c8;
+            border-color: #8f94fb;
         }
-        .symbol-btn.active-o {
-            background: #2ed573;
-            border-color: #2ed573;
+        .toggle-btn.active-x { background: #ff4757; border-color: #ff4757; }
+        .toggle-btn.active-o { background: #2ed573; border-color: #2ed573; }
+
+        .rooms-list-container {
+            margin-top: 15px;
+            background: #1e1e2f;
+            border-radius: 12px;
+            padding: 12px;
+            max-height: 180px;
+            overflow-y: auto;
+            text-align: right;
+        }
+        .rooms-list-title {
+            font-size: 0.9rem;
+            color: #8f94fb;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .room-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #2a2a40;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+        .room-badge {
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+        .badge-open { background: #2ed573; color: #1e1e2f; }
+        .badge-full { background: #ff4757; color: #fff; }
+        .btn-join-sm {
+            padding: 5px 12px;
+            border: none;
+            background: #4e54c8;
+            color: white;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.8rem;
         }
 
         .scoreboard {
@@ -145,7 +187,7 @@
             font-weight: bold;
         }
         .status {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             margin-bottom: 15px;
             font-weight: bold;
             color: #ffdd59;
@@ -154,8 +196,8 @@
 
         .board-container {
             position: relative;
-            width: 290px;
-            height: 290px;
+            width: 280px;
+            height: 280px;
             margin: 0 auto;
             direction: ltr !important;
         }
@@ -198,6 +240,26 @@
             transition: opacity 0.3s ease;
         }
 
+        .swap-banner {
+            background: #ffaa00;
+            color: #1e1e2f;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .swap-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .btn-swap-yes { background: #2ed573; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-swap-no { background: #ff4757; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+
         .btn {
             width: 100%;
             padding: 12px;
@@ -212,6 +274,7 @@
             box-shadow: 0 4px 12px rgba(78, 84, 200, 0.4);
         }
         .btn-secondary { background: #33334e; box-shadow: none; }
+        .btn-warning { background: #e67e22; box-shadow: none; }
         .btn:active { transform: scale(0.98); }
 
         .developer-footer {
@@ -252,22 +315,37 @@
             <input type="text" id="p1-input" value="اللاعب 1" placeholder="أدخل اسمك">
         </div>
 
-        <!-- اختيار الرمز -->
         <div class="input-group">
             <label>اختر رمزك:</label>
-            <div class="symbol-select-container">
-                <button id="sym-x-btn" type="button" class="symbol-btn active-x" onclick="selectSymbol('X')">X</button>
-                <button id="sym-o-btn" type="button" class="symbol-btn" onclick="selectSymbol('O')">O</button>
+            <div class="select-toggle-container">
+                <button id="sym-x-btn" type="button" class="toggle-btn active-x" onclick="selectSymbol('X')">X</button>
+                <button id="sym-o-btn" type="button" class="toggle-btn" onclick="selectSymbol('O')">O</button>
             </div>
         </div>
 
         <div id="online-options" class="hidden">
             <div class="input-group">
-                <label>رمز الغرفة (للانضمام):</label>
+                <label>نوع الغرفة عند الإنشاء:</label>
+                <div class="select-toggle-container">
+                    <button id="room-public-btn" type="button" class="toggle-btn active" onclick="setRoomVisibility(true)">عامة 🌐</button>
+                    <button id="room-private-btn" type="button" class="toggle-btn" onclick="setRoomVisibility(false)">خاصة 🔒</button>
+                </div>
+            </div>
+
+            <button class="btn" onclick="createOnlineRoom()">إنشاء غرفة جديدة ➕</button>
+
+            <div class="input-group" style="margin-top: 15px;">
+                <label>انضمام برمز خاص:</label>
                 <input type="text" id="room-input" placeholder="أدخل رمز الغرفة">
             </div>
-            <button class="btn btn-secondary" onclick="joinOnlineRoom()">انضمام لغرفة 🔑</button>
-            <button class="btn" onclick="createOnlineRoom()">إنشاء غرفة جديدة ➕</button>
+            <button class="btn btn-secondary" onclick="joinOnlineRoomByInput()">انضمام لغرفة 🔑</button>
+
+            <div class="rooms-list-container">
+                <div class="rooms-list-title">🌐 الغرف العامة المتاحة حالياً:</div>
+                <div id="public-rooms-list">
+                    <div style="text-align: center; color: #888; font-size: 0.8rem;">جاري البحث عن غرف...</div>
+                </div>
+            </div>
         </div>
 
         <div id="local-options">
@@ -285,6 +363,14 @@
     <div id="game-screen" class="card hidden">
         <h1>لعبة X - O</h1>
         <div id="room-display" class="room-code-badge hidden">غرفة: <span id="current-room-code"></span></div>
+
+        <div id="swap-banner" class="swap-banner hidden">
+            <span id="swap-msg-text">طلب منافسك تبديل الرموز! هل توافق؟</span>
+            <div class="swap-buttons">
+                <button class="btn-swap-yes" onclick="respondSwap(true)">موافقة 🟢</button>
+                <button class="btn-swap-no" onclick="respondSwap(false)">رفض 🔴</button>
+            </div>
+        </div>
 
         <div class="scoreboard">
             <div id="box-p1" class="score-box active">
@@ -320,6 +406,7 @@
             </svg>
         </div>
 
+        <button id="btn-swap-request" class="btn btn-warning hidden" onclick="requestSymbolSwap()">طلب تبديل الرموز 🔄</button>
         <button class="btn" onclick="restartGame()">إعادة اللعب 🔄</button>
         <button class="btn btn-secondary" onclick="backToMenu()">القائمة الرئيسية 🏠</button>
 
@@ -352,6 +439,12 @@
         const localOptions = document.getElementById('local-options');
         const onlineOptions = document.getElementById('online-options');
 
+        const symXBtn = document.getElementById('sym-x-btn');
+        const symOBtn = document.getElementById('sym-o-btn');
+        const roomPublicBtn = document.getElementById('room-public-btn');
+        const roomPrivateBtn = document.getElementById('room-private-btn');
+        const publicRoomsList = document.getElementById('public-rooms-list');
+
         const nameP1Display = document.getElementById('name-p1');
         const nameP2Display = document.getElementById('name-p2');
         const scoreP1Display = document.getElementById('score-p1');
@@ -364,13 +457,14 @@
         const cells = document.querySelectorAll('.cell');
         const winningLine = document.getElementById('winningLine');
 
-        const symXBtn = document.getElementById('sym-x-btn');
-        const symOBtn = document.getElementById('sym-o-btn');
+        const btnSwapRequest = document.getElementById('btn-swap-request');
+        const swapBanner = document.getElementById('swap-banner');
 
         let gameMode = 'pvp';
         let userSymbol = 'X';
         let myRole = 'X';
         let aiSymbol = 'O';
+        let isPublicRoom = true;
         let currentRoomId = null;
         let boardState = ['', '', '', '', '', '', '', '', ''];
         let currentPlayer = 'X';
@@ -397,16 +491,24 @@
             { x1: '95%', y1: '5%',   x2: '5%',  y2: '95%' }
         ];
 
+        listenToPublicRooms();
+
         function selectSymbol(sym) {
             userSymbol = sym;
             aiSymbol = sym === 'X' ? 'O' : 'X';
             if (sym === 'X') {
-                symXBtn.className = 'symbol-btn active-x';
-                symOBtn.className = 'symbol-btn';
+                symXBtn.className = 'toggle-btn active-x';
+                symOBtn.className = 'toggle-btn';
             } else {
-                symXBtn.className = 'symbol-btn';
-                symOBtn.className = 'symbol-btn active-o';
+                symXBtn.className = 'toggle-btn';
+                symOBtn.className = 'toggle-btn active-o';
             }
+        }
+
+        function setRoomVisibility(isPublic) {
+            isPublicRoom = isPublic;
+            roomPublicBtn.classList.toggle('active', isPublic);
+            roomPrivateBtn.classList.toggle('active', !isPublic);
         }
 
         function selectMode(mode) {
@@ -431,42 +533,96 @@
             }
         }
 
+        function listenToPublicRooms() {
+            db.ref('rooms').on('value', snapshot => {
+                const roomsData = snapshot.val();
+                publicRoomsList.innerHTML = '';
+                if (!roomsData) {
+                    publicRoomsList.innerHTML = '<div style="text-align: center; color: #888; font-size: 0.8rem;">لا توجد غرف عامة حالياً</div>';
+                    return;
+                }
+
+                let publicCount = 0;
+                for (let roomId in roomsData) {
+                    const room = roomsData[roomId];
+                    const isFull = room.p2Name && room.p2Name !== 'في الانتظار...';
+                    
+                    if (room.isPublic && !isFull) {
+                        publicCount++;
+                        const roomEl = document.createElement('div');
+                        roomEl.className = 'room-item';
+                        roomEl.innerHTML = `
+                            <div>
+                                <strong>غرفة #${roomId}</strong>
+                                <span style="font-size: 0.75rem; color: #aaa;">(${room.p1Name})</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="room-badge badge-open">1/2</span>
+                                <button class="btn-join-sm" onclick="joinOnlineRoom('${roomId}')">انضمام</button>
+                            </div>
+                        `;
+                        publicRoomsList.appendChild(roomEl);
+                    }
+                }
+
+                if (publicCount === 0) {
+                    publicRoomsList.innerHTML = '<div style="text-align: center; color: #888; font-size: 0.8rem;">لا توجد غرف عامة متاحة حالياً</div>';
+                }
+            });
+        }
+
         function createOnlineRoom() {
             p1Name = p1Input.value.trim() || 'اللاعب 1';
             myRole = userSymbol;
             currentRoomId = Math.floor(1000 + Math.random() * 9000).toString();
 
             const roomRef = db.ref('rooms/' + currentRoomId);
+            
+            // حذف الغرفة عند انقطاع الاتصال
+            roomRef.onDisconnect().remove();
+
             roomRef.set({
                 p1Name: `${p1Name} (${userSymbol})`,
                 p2Name: 'في الانتظار...',
                 p1Symbol: userSymbol,
                 p2Symbol: userSymbol === 'X' ? 'O' : 'X',
+                isPublic: isPublicRoom,
                 boardState: ['', '', '', '', '', '', '', '', ''],
                 currentPlayer: 'X',
                 isGameActive: false,
                 winner: null,
-                scores: { p1: 0, p2: 0, ties: 0 }
+                scores: { p1: 0, p2: 0, ties: 0 },
+                swapRequest: null
             });
 
             setupOnlineGameUI();
             listenToRoomUpdates();
         }
 
-        function joinOnlineRoom() {
+        function joinOnlineRoomByInput() {
             const code = roomInput.value.trim();
             if (!code) { alert('أدخل رمز الغرفة!'); return; }
+            joinOnlineRoom(code);
+        }
 
+        function joinOnlineRoom(code) {
             const roomRef = db.ref('rooms/' + code);
             roomRef.once('value', snapshot => {
                 if (!snapshot.exists()) {
-                    alert('الغرفة غير موجودة!');
+                    alert('الغرفة غير موجودة أو تم إغلاقها!');
                     return;
                 }
                 const data = snapshot.val();
+                if (data.p2Name && data.p2Name !== 'في الانتظار...') {
+                    alert('الغرفة ممتلئة بالكامل!');
+                    return;
+                }
                 myRole = data.p2Symbol;
-                p2Name = `${p1Input.value.trim() || 'اللاعب 2'} (${myRole})`;
+                const p2NameRaw = p1Input.value.trim() || 'اللاعب 2';
+                p2Name = `${p2NameRaw} (${myRole})`;
                 currentRoomId = code;
+
+                roomRef.onDisconnect().cancel();
 
                 roomRef.update({
                     p2Name: p2Name,
@@ -481,14 +637,57 @@
         function setupOnlineGameUI() {
             currentRoomCode.textContent = currentRoomId;
             roomDisplay.classList.remove('hidden');
+            btnSwapRequest.classList.remove('hidden');
             setupScreen.classList.add('hidden');
             gameScreen.classList.remove('hidden');
         }
 
-        function listenToRoomUpdates() {
+        function requestSymbolSwap() {
+            if (!currentRoomId || !isGameActive) return;
+            db.ref('rooms/' + currentRoomId + '/swapRequest').set({
+                requestedBy: myRole,
+                status: 'pending'
+            });
+            alert('تم إرسال طلب تبديل الرموز إلى المنافس... ⏳');
+        }
+
+        function respondSwap(accept) {
+            if (!currentRoomId) return;
+            if (accept) {
+                db.ref('rooms/' + currentRoomId).once('value', snapshot => {
+                    const data = snapshot.val();
+                    if (!data) return;
+                    const oldP1Sym = data.p1Symbol;
+                    const oldP2Sym = data.p2Symbol;
+                    
+                    let p1NameClean = data.p1Name.replace(` (${oldP1Sym})`, '');
+                    let p2NameClean = data.p2Name.replace(` (${oldP2Sym})`, '');
+
+                    db.ref('rooms/' + currentRoomId).update({
+                        p1Symbol: oldP2Sym,
+                        p2Symbol: oldP1Sym,
+                        p1Name: `${p1NameClean} (${oldP2Sym})`,
+                        p2Name: `${p2NameClean} (${oldP1Sym})`,
+                        swapRequest: { status: 'accepted' }
+                    });
+                });
+            } else {
+                db.ref('rooms/' + currentRoomId + '/swapRequest').update({
+                    status: 'rejected'
+                });
+            }
+            swapBanner.classList.add('hidden');
+        }
+                    function listenToRoomUpdates() {
             db.ref('rooms/' + currentRoomId).on('value', snapshot => {
                 const data = snapshot.val();
-                if (!data) return;
+                
+                // إذا تم حذف الغرفة أو خرج المنافس
+                if (!data) {
+                    alert('تم إغلاق الغرفة أو غادر المنافس المباراة! 🚪');
+                    backToMenu();
+                    return;
+                }
 
                 p1Name = data.p1Name;
                 p2Name = data.p2Name;
@@ -497,9 +696,26 @@
                 isGameActive = data.isGameActive;
                 scores = data.scores || { p1: 0, p2: 0, ties: 0 };
 
+                if (data.p1Symbol && data.p2Symbol) {
+                    const myCleanName = p1Input.value.trim() || 'اللاعب 1';
+                    if (data.p1Name.includes(myCleanName)) {
+                        myRole = data.p1Symbol;
+                    } else {
+                        myRole = data.p2Symbol;
+                    }
+                }
+
                 nameP1Display.textContent = p1Name;
                 nameP2Display.textContent = p2Name;
                 updateScoreUI();
+
+                if (data.swapRequest && data.swapRequest.status === 'pending') {
+                    if (data.swapRequest.requestedBy !== myRole) {
+                        swapBanner.classList.remove('hidden');
+                    }
+                } else {
+                    swapBanner.classList.add('hidden');
+                }
 
                 cells.forEach((cell, idx) => {
                     cell.textContent = boardState[idx];
@@ -541,6 +757,7 @@
             updateScoreUI();
 
             roomDisplay.classList.add('hidden');
+            btnSwapRequest.classList.add('hidden');
             setupScreen.classList.add('hidden');
             gameScreen.classList.remove('hidden');
 
@@ -548,8 +765,11 @@
         }
 
         function backToMenu() {
-            if (currentRoomId) {
+            if (currentRoomId && gameMode === 'online') {
+                // حذف الغرفة فوراً عند العودة للقائمة
                 db.ref('rooms/' + currentRoomId).off();
+                db.ref('rooms/' + currentRoomId).remove();
+                currentRoomId = null;
             }
             gameScreen.classList.add('hidden');
             setupScreen.classList.remove('hidden');
@@ -599,17 +819,17 @@
                 }
             }
 
-            let nextPlayer = myRole === 'X' ? 'O' : 'X';
+            let nextPlayer = currentPlayer === 'X' ? 'O' : 'X';
             let updates = {
                 boardState: boardState,
                 currentPlayer: nextPlayer
             };
 
             if (roundWon) {
-                if (myRole === userSymbol) scores.p1++; else scores.p2++;
-                updates.winner = myRole;
+                updates.winner = currentPlayer;
                 updates.winIndex = winIndex;
                 updates.isGameActive = false;
+                if (currentPlayer === myRole) scores.p1++; else scores.p2++;
                 updates.scores = scores;
             } else if (!boardState.includes('')) {
                 scores.ties++;
@@ -744,8 +964,6 @@
             const coords = lineCoords[index];
             winningLine.setAttribute('x1', coords.x1);
             winningLine.setAttribute('y1', coords.y1);
-            winningLine.setAttribute('x2', coords.x2);
-            winningLine.setAttribute('y2', coords.y2);
             winningLine.style.opacity = '1';
         }
 
@@ -756,7 +974,8 @@
                     currentPlayer: 'X',
                     isGameActive: true,
                     winner: null,
-                    winIndex: null
+                    winIndex: null,
+                    swapRequest: null
                 });
             } else {
                 boardState = ['', '', '', '', '', '', '', '', ''];
