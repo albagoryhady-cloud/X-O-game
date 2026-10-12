@@ -1037,42 +1037,121 @@
             }
             if (swapBanner) swapBanner.classList.add('hidden');
         }
-                    function listenToRoomUpdates() {
-            db.ref('rooms/' + currentRoomId).on('value', snapshot => {
-                const data = snapshot.val();
-                
-                if (!data) {
-                    alert('تم إغلاق الغرفة أو غادر الهوست المباراة! 🚪');
-                    stopTurnTimer();
-                    backToMenu();
-                    return;
+               
+
+                function listenToRoomUpdates() {
+    db.ref('rooms/' + currentRoomId).on('value', snapshot => {
+        const data = snapshot.val();
+        
+        if (!data) {
+            alert('تم إغلاق الغرفة أو غادر الهوست المباراة! 🚪');
+            stopTurnTimer();
+            backToMenu();
+            return;
+        }
+
+        // الترقية التلقائية للاعب الثاني ليصبح الهوست الجديد إذا غادر الأول
+        if (playerRole === 'p2' && data.p2Name === 'في الانتظار...') {
+            playerRole = 'p1';
+            mySymbol = data.p1Symbol;
+            alert('👑 أصبحت الآن الهوست الجديد للغرفة بعد مغادرة اللاعب الأول!');
+        }
+
+        p1Name = data.p1Name || 'الهوست';
+        p2Name = data.p2Name || 'في الانتظار...';
+        boardState = data.boardState || ['', '', '', '', '', '', '', '', ''];
+        currentPlayer = data.currentPlayer;
+        isGameActive = data.isGameActive;
+        scores = data.scores || { p1: 0, p2: 0, ties: 0 };
+
+        mySymbol = playerRole === 'p1' ? data.p1Symbol : data.p2Symbol;
+
+        if (nameP1Display) nameP1Display.textContent = `${p1Name} (${data.p1Symbol})`;
+        if (nameP2Display) nameP2Display.textContent = p2Name !== 'في الانتظار...' ? `${p2Name} (${data.p2Symbol})` : p2Name;
+        updateScoreUI();
+
+        // عرض الرسائل الـ 6 الأخيرة في الشات بأمان
+        if (data.messages && chatMessages) {
+            chatMessages.innerHTML = '';
+            const msgsArray = Object.values(data.messages).slice(-6);
+            msgsArray.forEach(m => {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'chat-msg' + (m.sender === playerRole ? ' me' : '');
+                msgDiv.textContent = `${m.name}: ${m.text}`;
+                chatMessages.appendChild(msgDiv);
+            });
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // معالجة بنر طلب التبديل والإشعارات
+        if (data.swapRequest) {
+            if (data.swapRequest.status === 'pending') {
+                if (data.swapRequest.requestedBy !== playerRole && swapBanner) {
+                    swapBanner.classList.remove('hidden');
                 }
-
-                p1Name = data.p1Name || 'الهوست';
-                p2Name = data.p2Name || 'في الانتظار...';
-                boardState = data.boardState || ['', '', '', '', '', '', '', '', ''];
-                currentPlayer = data.currentPlayer;
-                isGameActive = data.isGameActive;
-                scores = data.scores || { p1: 0, p2: 0, ties: 0 };
-
-                mySymbol = playerRole === 'p1' ? data.p1Symbol : data.p2Symbol;
-
-                if (nameP1Display) nameP1Display.textContent = `${p1Name} (${data.p1Symbol})`;
-                if (nameP2Display) nameP2Display.textContent = p2Name !== 'في الانتظار...' ? `${p2Name} (${data.p2Symbol})` : p2Name;
-                updateScoreUI();
-
-                // عرض الرسائل الـ 6 الأخيرة في الشات بأمان
-                if (data.messages && chatMessages) {
-                    chatMessages.innerHTML = '';
-                    const msgsArray = Object.values(data.messages).slice(-6);
-                    msgsArray.forEach(m => {
-                        const msgDiv = document.createElement('div');
-                        msgDiv.className = 'chat-msg' + (m.sender === playerRole ? ' me' : '');
-                        msgDiv.textContent = `${m.name}: ${m.text}`;
-                        chatMessages.appendChild(msgDiv);
-                    });
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
+            } else if (data.swapRequest.status === 'rejected') {
+                if (data.swapRequest.requestedBy === playerRole) {
+                    alert('تم رفض طلب تبديل الرموز من المنافس ❌');
+                    db.ref('rooms/' + currentRoomId + '/swapRequest').remove();
                 }
+                if (swapBanner) swapBanner.classList.add('hidden');
+            } else if (data.swapRequest.status === 'accepted') {
+                if (data.swapRequest.requestedBy === playerRole) {
+                    alert('تم قبول طلب تبديل الرموز بنجاح 🟢');
+                    db.ref('rooms/' + currentRoomId + '/swapRequest').remove();
+                }
+                if (swapBanner) swapBanner.classList.add('hidden');
+            }
+        } else {
+            if (swapBanner) swapBanner.classList.add('hidden');
+        }
+
+        cells.forEach((cell, idx) => {
+            cell.textContent = boardState[idx];
+            cell.className = 'cell ' + boardState[idx].toLowerCase();
+        });
+
+        if (data.winner) {
+            stopTurnTimer();
+            if (data.winner === 'tie') {
+                if (statusText) statusText.textContent = '🤝 تعادل! بداية جولة جديدة خلال 3 ثوانٍ...';
+            } else {
+                const winnerSymbol = data.winner;
+                const winnerName = (winnerSymbol === data.p1Symbol) ? p1Name : p2Name;
+                if (statusText) statusText.textContent = `🎉 الفائز هو ${winnerName}! جولة جديدة خلال 3 ثوانٍ...`;
+
+                if (winnerSymbol === mySymbol) {
+                    playSound('win');
+                    triggerConfetti();
+                }
+            }
+            if (data.winIndex !== undefined && data.winIndex !== null) {
+                drawWinningLine(data.winIndex);
+            }
+
+            // إعادة تشغيل تلقائي أونلاين عبر الهوست فقط بعد 3 ثوانٍ
+            if (playerRole === 'p1' && !autoRestartTimer) {
+                autoRestartTimer = setTimeout(() => {
+                    autoRestartTimer = null;
+                    restartGame();
+                }, 3000);
+            }
+        } else {
+            if (autoRestartTimer) {
+                clearTimeout(autoRestartTimer);
+                autoRestartTimer = null;
+            }
+            if (winningLine) winningLine.style.opacity = '0';
+            if (!isGameActive && gameMode === 'online') {
+                stopTurnTimer();
+                if (statusText) statusText.textContent = 'في انتظار انضمام اللاعب الثاني... ⏳';
+            } else {
+                updateTurnUI();
+                startTurnTimer();
+            }
+        }
+    });
+}
 
                 // معالجة بنر طلب التبديل والإشعارات
                 if (data.swapRequest) {
@@ -1303,39 +1382,46 @@
         }
 
         function checkOnlineResult(lastIndex) {
-            let roundWon = false;
-            let winIndex = -1;
+    let roundWon = false;
+    let winIndex = -1;
 
-            for (let i = 0; i < winConditions.length; i++) {
-                const [a, b, c] = winConditions[i];
-                if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
-                    roundWon = true;
-                    winIndex = i;
-                    break;
-                }
-            }
-
-            let nextPlayer = currentPlayer === 'X' ? 'O' : 'X';
-            let updates = {
-                boardState: boardState,
-                currentPlayer: nextPlayer
-            };
-
-            if (roundWon) {
-                updates.winner = currentPlayer;
-                updates.winIndex = winIndex;
-                updates.isGameActive = false;
-                if (currentPlayer === mySymbol) scores.p1++; else scores.p2++;
-                updates.scores = scores;
-            } else if (!boardState.includes('')) {
-                scores.ties++;
-                updates.winner = 'tie';
-                updates.isGameActive = false;
-                updates.scores = scores;
-            }
-
-            db.ref('rooms/' + currentRoomId).update(updates);
+    for (let i = 0; i < winConditions.length; i++) {
+        const [a, b, c] = winConditions[i];
+        if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
+            roundWon = true;
+            winIndex = i;
+            break;
         }
+    }
+
+    let nextPlayer = currentPlayer === 'X' ? 'O' : 'X';
+    let updates = {
+        boardState: boardState,
+        currentPlayer: nextPlayer
+    };
+
+    if (roundWon) {
+        updates.winner = currentPlayer;
+        updates.winIndex = winIndex;
+        updates.isGameActive = false;
+        
+        // حساب النقاط بدقة لكل دور (هوست أو ضيف)
+        if (playerRole === 'p1') {
+            if (currentPlayer === mySymbol) scores.p1++; else scores.p2++;
+        } else {
+            if (currentPlayer === mySymbol) scores.p2++; else scores.p1++;
+        }
+        
+        updates.scores = scores;
+    } else if (!boardState.includes('')) {
+        scores.ties++;
+        updates.winner = 'tie';
+        updates.isGameActive = false;
+        updates.scores = scores;
+    }
+
+    db.ref('rooms/' + currentRoomId).update(updates);
+}
 
         function makeAiMove() {
             let move = -1;
