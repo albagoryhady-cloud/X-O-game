@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة X - O الذكية</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #1e1e2f;
+            color: #fff;
+            padding: 15px;
+        }
+        .card {
+            background-color: #2a2a40;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.2rem;
+            color: #8f94fb;
+            text-shadow: 0 0 10px rgba(143, 148, 251, 0.3);
+        }
+        .hidden {
+            display: none !important;
+        }
+        
+        /* شاشة الإعدادات */
+        .mode-select {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .mode-btn {
+            flex: 1;
+            padding: 12px 8px;
+            border: 2px solid #4e54c8;
+            background: transparent;
+            color: #fff;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .mode-btn.active {
+            background: linear-gradient(135deg, #4e54c8, #8f94fb);
+            border-color: transparent;
+        }
+        .input-group {
+            margin-bottom: 15px;
+            text-align: right;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #4e54c8;
+            background: #1e1e2f;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+        }
+        .input-group input:disabled {
+            opacity: 0.7;
+            background: #252538;
+        }
+
+        /* عداد النقاط ومعلومات اللاعبين */
+        .scoreboard {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #1e1e2f;
+            padding: 12px 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+        .score-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+        .score-name {
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 4px;
+            max-width: 90px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .score-num {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #fff;
+        }
+        .score-box.active .score-name {
+            color: #8f94fb;
+            font-weight: bold;
+        }
+        .status {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #ffdd59;
+            min-height: 1.6em;
+        }
+
+        /* لوحة اللعب والخط */
+        .board-container {
+            position: relative;
+            width: 290px;
+            height: 290px;
+            margin: 0 auto;
+            direction: ltr !important;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 10px;
+            width: 100%;
+            height: 100%;
+        }
+        .cell {
+            background-color: #1e1e2f;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        .cell:active {
+            transform: scale(0.96);
+        }
+        .cell.x { color: #ff4757; }
+        .cell.o { color: #2ed573; }
+
+        /* SVG خط الفوز */
+        .winning-line-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            direction: ltr !important;
+        }
+        #winningLine {
+            stroke: #ffdd59;
+            stroke-width: 8;
+            stroke-linecap: round;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        /* الأزرار */
+        .btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #4e54c8, #8f94fb);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(78, 84, 200, 0.4);
+        }
+        .btn-secondary {
+            background: #33334e;
+            box-shadow: none;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        /* توقيع المطور الأصلي */
+        .developer-footer {
+            margin-top: 22px;
+            font-size: 0.85rem;
+            color: #8f94fb;
+            opacity: 0.85;
+            letter-spacing: 0.8px;
+            direction: ltr !important;
+            font-family: monospace, sans-serif;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. شاشة البداية والإعدادات -->
+    <div id="setup-screen" class="card">
+        <h1>لعبة X - O</h1>
+        
+        <div class="mode-select">
+            <button id="btn-pvp" class="mode-btn active" onclick="selectMode('pvp')">👥 ضد صديق</button>
+            <button id="btn-ai" class="mode-btn" onclick="selectMode('ai')">🤖 ضد الذكاء الاصطناعي</button>
+        </div>
+
+        <div class="input-group">
+            <label>اسم اللاعب الأول (X):</label>
+            <input type="text" id="p1-input" value="اللاعب 1" placeholder="أدخل اسمك">
+        </div>
+
+        <div class="input-group">
+            <label>اسم اللاعب الثاني (O):</label>
+            <input type="text" id="p2-input" value="اللاعب 2" placeholder="اسم صديقك">
+        </div>
+
+        <button class="btn" onclick="startGame()">ابدأ اللعب 🎮</button>
+
+        <div class="developer-footer">unset The First Step of H~~H</div>
+    </div>
+
+    <!-- 2. شاشة اللعبة -->
+    <div id="game-screen" class="card hidden">
+        <h1>لعبة X - O</h1>
+
+        <!-- عداد النقاط -->
+        <div class="scoreboard">
+            <div id="box-p1" class="score-box active">
+                <span id="name-p1" class="score-name">اللاعب 1</span>
+                <span id="score-p1" class="score-num">0</span>
+            </div>
+            <div class="score-box">
+                <span class="score-name">تعادل</span>
+                <span id="score-ties" class="score-num">0</span>
+            </div>
+            <div id="box-p2" class="score-box">
+                <span id="name-p2" class="score-name">اللاعب 2</span>
+                <span id="score-p2" class="score-num">0</span>
+            </div>
+        </div>
+
+        <div class="status" id="status"></div>
+
+        <div class="board-container">
+            <div class="board" id="board">
+                <div class="cell" data-index="0"></div>
+                <div class="cell" data-index="1"></div>
+                <div class="cell" data-index="2"></div>
+                <div class="cell" data-index="3"></div>
+                <div class="cell" data-index="4"></div>
+                <div class="cell" data-index="5"></div>
+                <div class="cell" data-index="6"></div>
+                <div class="cell" data-index="7"></div>
+                <div class="cell" data-index="8"></div>
+            </div>
+            <svg class="winning-line-svg">
+                <line id="winningLine" x1="0" y1="0" x2="0" y2="0" />
+            </svg>
+        </div>
+
+        <button class="btn" onclick="restartGame()">إعادة اللعب 🔄</button>
+        <button class="btn btn-secondary" onclick="backToMenu()">القائمة الرئيسية 🏠</button>
+
+        <div class="developer-footer">unset The First Step of H~~H</div>
+    </div>
+
+    <script>
+        const setupScreen = document.getElementById('setup-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const p1Input = document.getElementById('p1-input');
+        const p2Input = document.getElementById('p2-input');
+        
+        const nameP1Display = document.getElementById('name-p1');
+        const nameP2Display = document.getElementById('name-p2');
+        const scoreP1Display = document.getElementById('score-p1');
+        const scoreP2Display = document.getElementById('score-p2');
+        const scoreTiesDisplay = document.getElementById('score-ties');
+        const boxP1 = document.getElementById('box-p1');
+        const boxP2 = document.getElementById('box-p2');
+
+        const statusText = document.getElementById('status');
+        const cells = document.querySelectorAll('.cell');
+        const winningLine = document.getElementById('winningLine');
+
+        let gameMode = 'pvp';
+        let boardState = ['', '', '', '', '', '', '', '', ''];
+        let currentPlayer = 'X';
+        let isGameActive = false;
+        
+        let p1Name = 'اللاعب 1';
+        let p2Name = 'اللاعب 2';
+        let scores = { p1: 0, p2: 0, ties: 0 };
+
+        const winConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        const lineCoords = [
+            { x1: '5%',  y1: '16.6%', x2: '95%', y2: '16.6%' },
+            { x1: '5%',  y1: '50%',   x2: '95%', y2: '50%' },
+            { x1: '5%',  y1: '83.3%', x2: '95%', y2: '83.3%' },
+            { x1: '16.6%', y1: '5%',  x2: '16.6%', y2: '95%' },
+            { x1: '50%',   y1: '5%',  x2: '50%',   y2: '95%' },
+            { x1: '83.3%', y1: '5%',  x2: '83.3%', y2: '95%' },
+            { x1: '5%',  y1: '5%',   x2: '95%', y2: '95%' },
+            { x1: '95%', y1: '5%',   x2: '5%',  y2: '95%' }
+        ];
+
+        function selectMode(mode) {
+            gameMode = mode;
+            document.getElementById('btn-pvp').classList.toggle('active', mode === 'pvp');
+            document.getElementById('btn-ai').classList.toggle('active', mode === 'ai');
+
+            if (mode === 'ai') {
+                p2Input.value = 'Zenith';
+                p2Input.disabled = true;
+            } else {
+                p2Input.value = 'اللاعب 2';
+                p2Input.disabled = false;
+            }
+        }
+
+        function startGame() {
+            p1Name = p1Input.value.trim() || 'اللاعب 1';
+            p2Name = p2Input.value.trim() || (gameMode === 'ai' ? 'Zenith' : 'اللاعب 2');
+
+            nameP1Display.textContent = p1Name;
+            nameP2Display.textContent = p2Name;
+
+            scores = { p1: 0, p2: 0, ties: 0 };
+            updateScoreUI();
+
+            setupScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+
+            restartGame();
+        }
+
+        function backToMenu() {
+            gameScreen.classList.add('hidden');
+            setupScreen.classList.remove('hidden');
+        }
+
+        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+
+        function handleCellClick(e) {
+            const index = e.target.getAttribute('data-index');
+
+            if (boardState[index] !== '' || !isGameActive) return;
+
+            makeMove(index, currentPlayer);
+
+            if (isGameActive && gameMode === 'ai' && currentPlayer === 'O') {
+                isGameActive = false;
+                setTimeout(makeAiMove, 350);
+            }
+        }
+
+        function makeMove(index, player) {
+            boardState[index] = player;
+            const cell = cells[index];
+            cell.textContent = player;
+            cell.classList.add(player.toLowerCase());
+
+            checkResult();
+        }
+
+        function makeAiMove() {
+            let bestMove = getBestAiMove();
+            isGameActive = true;
+            makeMove(bestMove, 'O');
+        }
+
+        function getBestAiMove() {
+            let bestScore = -Infinity;
+            let move = -1;
+
+            for (let i = 0; i < 9; i++) {
+                if (boardState[i] === '') {
+                    boardState[i] = 'O';
+                    let score = minimax(boardState, 0, false);
+                    boardState[i] = '';
+                    if (score > bestScore) {
+                        bestScore = score;
+                        move = i;
+                    }
+                }
+            }
+            return move;
+        }
+
+        function minimax(board, depth, isMaximizing) {
+            let result = evaluateBoard(board);
+            if (result === 'O') return 10 - depth;
+            if (result === 'X') return depth - 10;
+            if (result === 'tie') return 0;
+
+            if (isMaximizing) {
+                let bestScore = -Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (board[i] === '') {
+                        board[i] = 'O';
+                        let score = minimax(board, depth + 1, false);
+                        board[i] = '';
+                        bestScore = Math.max(score, bestScore);
+                    }
+                }
+                return bestScore;
+            } else {
+                let bestScore = Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (board[i] === '') {
+                        board[i] = 'X';
+                        let score = minimax(board, depth + 1, true);
+                        board[i] = '';
+                        bestScore = Math.min(score, bestScore);
+                    }
+                }
+                return bestScore;
+            }
+        }
+
+        function evaluateBoard(board) {
+            for (let i = 0; i < winConditions.length; i++) {
+                const [a, b, c] = winConditions[i];
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    return board[a];
+                }
+            }
+            if (!board.includes('')) return 'tie';
+            return null;
+        }
+
+        function checkResult() {
+            let roundWon = false;
+            let winIndex = -1;
+
+            for (let i = 0; i < winConditions.length; i++) {
+                const [a, b, c] = winConditions[i];
+                if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
+                    roundWon = true;
+                    winIndex = i;
+                    break;
+                }
+            }
+
+            if (roundWon) {
+                const winnerName = currentPlayer === 'X' ? p1Name : p2Name;
+                statusText.textContent = `🎉 الفائز هو ${winnerName}!`;
+                drawWinningLine(winIndex);
+
+                if (currentPlayer === 'X') {
+                    scores.p1++;
+                } else {
+                    scores.p2++;
+                }
+                updateScoreUI();
+                isGameActive = false;
+                return;
+            }
+
+            if (!boardState.includes('')) {
+                statusText.textContent = '🤝 تعادل!';
+                scores.ties++;
+                updateScoreUI();
+                isGameActive = false;
+                return;
+            }
+
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            updateTurnUI();
+        }
+
+        function updateTurnUI() {
+            if (currentPlayer === 'X') {
+                statusText.textContent = `دور: ${p1Name}`;
+                boxP1.classList.add('active');
+                boxP2.classList.remove('active');
+            } else {
+                statusText.textContent = `دور: ${p2Name}`;
+                boxP2.classList.add('active');
+                boxP1.classList.remove('active');
+            }
+        }
+
+        function updateScoreUI() {
+            scoreP1Display.textContent = scores.p1;
+            scoreP2Display.textContent = scores.p2;
+            scoreTiesDisplay.textContent = scores.ties;
+        }
+
+        function drawWinningLine(index) {
+            const coords = lineCoords[index];
+            winningLine.setAttribute('x1', coords.x1);
+            winningLine.setAttribute('y1', coords.y1);
+            winningLine.setAttribute('x2', coords.x2);
+            winningLine.setAttribute('y2', coords.y2);
+            winningLine.style.opacity = '1';
+        }
+
+        function restartGame() {
+            boardState = ['', '', '', '', '', '', '', '', ''];
+            currentPlayer = 'X';
+            isGameActive = true;
+            winningLine.style.opacity = '0';
+
+            cells.forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('x', 'o');
+            });
+
+            updateTurnUI();
+        }
+    </script>
+</body>
+  </html>
