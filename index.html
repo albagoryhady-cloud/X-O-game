@@ -702,14 +702,28 @@
                 nameP2Display.textContent = p2Name !== 'في الانتظار...' ? `${p2Name} (${data.p2Symbol})` : p2Name;
                 updateScoreUI();
 
-                // معالجة بنر طلب تبديل الرموز
-                if (data.swapRequest && data.swapRequest.status === 'pending') {
-                    if (data.swapRequest.requestedBy !== playerRole) {
-                        swapBanner.classList.remove('hidden');
-                    }
-                } else {
-                    swapBanner.classList.add('hidden');
-                }
+                // معالجة بنر طلب تبديل الرموز والإشعارات (قبول / رفض)
+if (data.swapRequest) {
+    if (data.swapRequest.status === 'pending') {
+        if (data.swapRequest.requestedBy !== playerRole) {
+            swapBanner.classList.remove('hidden');
+        }
+    } else if (data.swapRequest.status === 'rejected') {
+        if (data.swapRequest.requestedBy === playerRole) {
+            alert('تم رفض طلب تبديل الرموز من المنافس ❌');
+            db.ref('rooms/' + currentRoomId + '/swapRequest').remove();
+        }
+        swapBanner.classList.add('hidden');
+    } else if (data.swapRequest.status === 'accepted') {
+        if (data.swapRequest.requestedBy === playerRole) {
+            alert('تم قبول طلب تبديل الرموز بنجاح 🟢');
+            db.ref('rooms/' + currentRoomId + '/swapRequest').remove();
+        }
+        swapBanner.classList.add('hidden');
+    }
+} else {
+    swapBanner.classList.add('hidden');
+}
 
                 cells.forEach((cell, idx) => {
                     cell.textContent = boardState[idx];
