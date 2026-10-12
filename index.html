@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لعبة X - O الذكية</title>
+    <title>لعبة X - O الذكية أونلاين</title>
+    <!-- Firebase SDK v8 -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
     <style>
         * {
             box-sizing: border-box;
@@ -39,15 +43,14 @@
             display: none !important;
         }
         
-        /* شاشة الإعدادات */
         .mode-select {
             display: flex;
+            flex-direction: column;
             gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         .mode-btn {
-            flex: 1;
-            padding: 12px 8px;
+            padding: 12px;
             border: 2px solid #4e54c8;
             background: transparent;
             color: #fff;
@@ -79,13 +82,35 @@
             color: #fff;
             font-size: 1rem;
             outline: none;
-        }
-        .input-group input:disabled {
-            opacity: 0.7;
-            background: #252538;
+            text-align: center;
         }
 
-        /* عداد النقاط ومعلومات اللاعبين */
+        .symbol-select-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        .symbol-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #4e54c8;
+            background: #1e1e2f;
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .symbol-btn.active-x {
+            background: #ff4757;
+            border-color: #ff4757;
+        }
+        .symbol-btn.active-o {
+            background: #2ed573;
+            border-color: #2ed573;
+        }
+
         .scoreboard {
             display: flex;
             justify-content: space-between;
@@ -127,7 +152,6 @@
             min-height: 1.6em;
         }
 
-        /* لوحة اللعب والخط */
         .board-container {
             position: relative;
             width: 290px;
@@ -155,19 +179,14 @@
             user-select: none;
             transition: background 0.2s;
         }
-        .cell:active {
-            transform: scale(0.96);
-        }
+        .cell:active { transform: scale(0.96); }
         .cell.x { color: #ff4757; }
         .cell.o { color: #2ed573; }
 
-        /* SVG خط الفوز */
         .winning-line-svg {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             pointer-events: none;
             direction: ltr !important;
         }
@@ -179,7 +198,6 @@
             transition: opacity 0.3s ease;
         }
 
-        /* الأزرار */
         .btn {
             width: 100%;
             padding: 12px;
@@ -193,15 +211,9 @@
             margin-top: 10px;
             box-shadow: 0 4px 12px rgba(78, 84, 200, 0.4);
         }
-        .btn-secondary {
-            background: #33334e;
-            box-shadow: none;
-        }
-        .btn:active {
-            transform: scale(0.98);
-        }
+        .btn-secondary { background: #33334e; box-shadow: none; }
+        .btn:active { transform: scale(0.98); }
 
-        /* توقيع المطور الأصلي */
         .developer-footer {
             margin-top: 22px;
             font-size: 0.85rem;
@@ -212,6 +224,15 @@
             font-family: monospace, sans-serif;
             user-select: none;
         }
+        .room-code-badge {
+            background: #1e1e2f;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            color: #2ed573;
+            margin-bottom: 12px;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -221,21 +242,41 @@
         <h1>لعبة X - O</h1>
         
         <div class="mode-select">
-            <button id="btn-pvp" class="mode-btn active" onclick="selectMode('pvp')">👥 ضد صديق</button>
+            <button id="btn-pvp" class="mode-btn active" onclick="selectMode('pvp')">👥 لعب محلي (نفس الهاتف)</button>
             <button id="btn-ai" class="mode-btn" onclick="selectMode('ai')">🤖 ضد الذكاء الاصطناعي</button>
+            <button id="btn-online" class="mode-btn" onclick="selectMode('online')">🌐 لعب أونلاين مع صديق</button>
         </div>
 
         <div class="input-group">
-            <label>اسم اللاعب الأول (X):</label>
+            <label>اسمك:</label>
             <input type="text" id="p1-input" value="اللاعب 1" placeholder="أدخل اسمك">
         </div>
 
+        <!-- اختيار الرمز -->
         <div class="input-group">
-            <label>اسم اللاعب الثاني (O):</label>
-            <input type="text" id="p2-input" value="اللاعب 2" placeholder="اسم صديقك">
+            <label>اختر رمزك:</label>
+            <div class="symbol-select-container">
+                <button id="sym-x-btn" type="button" class="symbol-btn active-x" onclick="selectSymbol('X')">X</button>
+                <button id="sym-o-btn" type="button" class="symbol-btn" onclick="selectSymbol('O')">O</button>
+            </div>
         </div>
 
-        <button class="btn" onclick="startGame()">ابدأ اللعب 🎮</button>
+        <div id="online-options" class="hidden">
+            <div class="input-group">
+                <label>رمز الغرفة (للانضمام):</label>
+                <input type="text" id="room-input" placeholder="أدخل رمز الغرفة">
+            </div>
+            <button class="btn btn-secondary" onclick="joinOnlineRoom()">انضمام لغرفة 🔑</button>
+            <button class="btn" onclick="createOnlineRoom()">إنشاء غرفة جديدة ➕</button>
+        </div>
+
+        <div id="local-options">
+            <div class="input-group" id="p2-group">
+                <label>اسم المنافس:</label>
+                <input type="text" id="p2-input" value="اللاعب 2">
+            </div>
+            <button class="btn" onclick="startGame()">ابدأ اللعب 🎮</button>
+        </div>
 
         <div class="developer-footer">unset The First Step of H~~H</div>
     </div>
@@ -243,8 +284,8 @@
     <!-- 2. شاشة اللعبة -->
     <div id="game-screen" class="card hidden">
         <h1>لعبة X - O</h1>
+        <div id="room-display" class="room-code-badge hidden">غرفة: <span id="current-room-code"></span></div>
 
-        <!-- عداد النقاط -->
         <div class="scoreboard">
             <div id="box-p1" class="score-box active">
                 <span id="name-p1" class="score-name">اللاعب 1</span>
@@ -284,13 +325,33 @@
 
         <div class="developer-footer">unset The First Step of H~~H</div>
     </div>
+        <script>
+        // بيانات Firebase الخاصة بمشروعك
+        const firebaseConfig = {
+            apiKey: "AIzaSyCSnUy1efc_LTvNKb77aDo5D8hPaTsnLYE",
+            authDomain: "xo-online-bb0e2.firebaseapp.com",
+            databaseURL: "https://xo-online-bb0e2-default-rtdb.firebaseio.com",
+            projectId: "xo-online-bb0e2",
+            storageBucket: "xo-online-bb0e2.firebasestorage.app",
+            messagingSenderId: "21077143842",
+            appId: "1:21077143842:web:75d0b89b2c3d7f2b64357b"
+        };
 
-    <script>
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+
         const setupScreen = document.getElementById('setup-screen');
         const gameScreen = document.getElementById('game-screen');
         const p1Input = document.getElementById('p1-input');
         const p2Input = document.getElementById('p2-input');
-        
+        const roomInput = document.getElementById('room-input');
+        const roomDisplay = document.getElementById('room-display');
+        const currentRoomCode = document.getElementById('current-room-code');
+        const localOptions = document.getElementById('local-options');
+        const onlineOptions = document.getElementById('online-options');
+
         const nameP1Display = document.getElementById('name-p1');
         const nameP2Display = document.getElementById('name-p2');
         const scoreP1Display = document.getElementById('score-p1');
@@ -303,7 +364,14 @@
         const cells = document.querySelectorAll('.cell');
         const winningLine = document.getElementById('winningLine');
 
+        const symXBtn = document.getElementById('sym-x-btn');
+        const symOBtn = document.getElementById('sym-o-btn');
+
         let gameMode = 'pvp';
+        let userSymbol = 'X';
+        let myRole = 'X';
+        let aiSymbol = 'O';
+        let currentRoomId = null;
         let boardState = ['', '', '', '', '', '', '', '', ''];
         let currentPlayer = 'X';
         let isGameActive = false;
@@ -329,23 +397,142 @@
             { x1: '95%', y1: '5%',   x2: '5%',  y2: '95%' }
         ];
 
+        function selectSymbol(sym) {
+            userSymbol = sym;
+            aiSymbol = sym === 'X' ? 'O' : 'X';
+            if (sym === 'X') {
+                symXBtn.className = 'symbol-btn active-x';
+                symOBtn.className = 'symbol-btn';
+            } else {
+                symXBtn.className = 'symbol-btn';
+                symOBtn.className = 'symbol-btn active-o';
+            }
+        }
+
         function selectMode(mode) {
             gameMode = mode;
             document.getElementById('btn-pvp').classList.toggle('active', mode === 'pvp');
             document.getElementById('btn-ai').classList.toggle('active', mode === 'ai');
+            document.getElementById('btn-online').classList.toggle('active', mode === 'online');
 
-            if (mode === 'ai') {
-                p2Input.value = 'Zenith';
-                p2Input.disabled = true;
+            if (mode === 'online') {
+                onlineOptions.classList.remove('hidden');
+                localOptions.classList.add('hidden');
             } else {
-                p2Input.value = 'اللاعب 2';
-                p2Input.disabled = false;
+                onlineOptions.classList.add('hidden');
+                localOptions.classList.remove('hidden');
+                if (mode === 'ai') {
+                    p2Input.value = 'Zenith';
+                    p2Input.disabled = true;
+                } else {
+                    p2Input.value = 'اللاعب 2';
+                    p2Input.disabled = false;
+                }
             }
         }
 
-        function startGame() {
+        function createOnlineRoom() {
             p1Name = p1Input.value.trim() || 'اللاعب 1';
-            p2Name = p2Input.value.trim() || (gameMode === 'ai' ? 'Zenith' : 'اللاعب 2');
+            myRole = userSymbol;
+            currentRoomId = Math.floor(1000 + Math.random() * 9000).toString();
+
+            const roomRef = db.ref('rooms/' + currentRoomId);
+            roomRef.set({
+                p1Name: `${p1Name} (${userSymbol})`,
+                p2Name: 'في الانتظار...',
+                p1Symbol: userSymbol,
+                p2Symbol: userSymbol === 'X' ? 'O' : 'X',
+                boardState: ['', '', '', '', '', '', '', '', ''],
+                currentPlayer: 'X',
+                isGameActive: false,
+                winner: null,
+                scores: { p1: 0, p2: 0, ties: 0 }
+            });
+
+            setupOnlineGameUI();
+            listenToRoomUpdates();
+        }
+
+        function joinOnlineRoom() {
+            const code = roomInput.value.trim();
+            if (!code) { alert('أدخل رمز الغرفة!'); return; }
+
+            const roomRef = db.ref('rooms/' + code);
+            roomRef.once('value', snapshot => {
+                if (!snapshot.exists()) {
+                    alert('الغرفة غير موجودة!');
+                    return;
+                }
+                const data = snapshot.val();
+                myRole = data.p2Symbol;
+                p2Name = `${p1Input.value.trim() || 'اللاعب 2'} (${myRole})`;
+                currentRoomId = code;
+
+                roomRef.update({
+                    p2Name: p2Name,
+                    isGameActive: true
+                });
+
+                setupOnlineGameUI();
+                listenToRoomUpdates();
+            });
+        }
+
+        function setupOnlineGameUI() {
+            currentRoomCode.textContent = currentRoomId;
+            roomDisplay.classList.remove('hidden');
+            setupScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+        }
+
+        function listenToRoomUpdates() {
+            db.ref('rooms/' + currentRoomId).on('value', snapshot => {
+                const data = snapshot.val();
+                if (!data) return;
+
+                p1Name = data.p1Name;
+                p2Name = data.p2Name;
+                boardState = data.boardState || ['', '', '', '', '', '', '', '', ''];
+                currentPlayer = data.currentPlayer;
+                isGameActive = data.isGameActive;
+                scores = data.scores || { p1: 0, p2: 0, ties: 0 };
+
+                nameP1Display.textContent = p1Name;
+                nameP2Display.textContent = p2Name;
+                updateScoreUI();
+
+                cells.forEach((cell, idx) => {
+                    cell.textContent = boardState[idx];
+                    cell.className = 'cell ' + boardState[idx].toLowerCase();
+                });
+
+                if (data.winner) {
+                    if (data.winner === 'tie') {
+                        statusText.textContent = '🤝 تعادل!';
+                    } else {
+                        const winnerName = data.winner === 'X' ? 
+                            (data.p1Symbol === 'X' ? p1Name : p2Name) : 
+                            (data.p1Symbol === 'O' ? p1Name : p2Name);
+                        statusText.textContent = `🎉 الفائز هو ${winnerName}!`;
+                    }
+                    if (data.winIndex !== undefined && data.winIndex !== null) {
+                        drawWinningLine(data.winIndex);
+                    }
+                } else {
+                    winningLine.style.opacity = '0';
+                    if (!isGameActive && gameMode === 'online') {
+                        statusText.textContent = 'في انتظار انضمام اللاعب الثاني... ⏳';
+                    } else {
+                        updateTurnUI();
+                    }
+                }
+            });
+        }
+
+        function startGame() {
+            p1Name = `${p1Input.value.trim() || 'اللاعب 1'} (${userSymbol})`;
+            const otherSymbol = userSymbol === 'X' ? 'O' : 'X';
+            p2Name = `${p2Input.value.trim() || (gameMode === 'ai' ? 'Zenith' : 'اللاعب 2')} (${otherSymbol})`;
 
             nameP1Display.textContent = p1Name;
             nameP2Display.textContent = p2Name;
@@ -353,6 +540,7 @@
             scores = { p1: 0, p2: 0, ties: 0 };
             updateScoreUI();
 
+            roomDisplay.classList.add('hidden');
             setupScreen.classList.add('hidden');
             gameScreen.classList.remove('hidden');
 
@@ -360,6 +548,9 @@
         }
 
         function backToMenu() {
+            if (currentRoomId) {
+                db.ref('rooms/' + currentRoomId).off();
+            }
             gameScreen.classList.add('hidden');
             setupScreen.classList.remove('hidden');
         }
@@ -371,11 +562,18 @@
 
             if (boardState[index] !== '' || !isGameActive) return;
 
-            makeMove(index, currentPlayer);
+            if (gameMode === 'online') {
+                if (currentPlayer !== myRole) return;
+                
+                boardState[index] = myRole;
+                checkOnlineResult(index);
+            } else {
+                makeMove(index, currentPlayer);
 
-            if (isGameActive && gameMode === 'ai' && currentPlayer === 'O') {
-                isGameActive = false;
-                setTimeout(makeAiMove, 350);
+                if (isGameActive && gameMode === 'ai' && currentPlayer === aiSymbol) {
+                    isGameActive = false;
+                    setTimeout(makeAiMove, 350);
+                }
             }
         }
 
@@ -388,19 +586,53 @@
             checkResult();
         }
 
+        function checkOnlineResult(lastIndex) {
+            let roundWon = false;
+            let winIndex = -1;
+
+            for (let i = 0; i < winConditions.length; i++) {
+                const [a, b, c] = winConditions[i];
+                if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
+                    roundWon = true;
+                    winIndex = i;
+                    break;
+                }
+            }
+
+            let nextPlayer = myRole === 'X' ? 'O' : 'X';
+            let updates = {
+                boardState: boardState,
+                currentPlayer: nextPlayer
+            };
+
+            if (roundWon) {
+                if (myRole === userSymbol) scores.p1++; else scores.p2++;
+                updates.winner = myRole;
+                updates.winIndex = winIndex;
+                updates.isGameActive = false;
+                updates.scores = scores;
+            } else if (!boardState.includes('')) {
+                scores.ties++;
+                updates.winner = 'tie';
+                updates.isGameActive = false;
+                updates.scores = scores;
+            }
+
+            db.ref('rooms/' + currentRoomId).update(updates);
+        }
+
         function makeAiMove() {
             let bestMove = getBestAiMove();
             isGameActive = true;
-            makeMove(bestMove, 'O');
+            makeMove(bestMove, aiSymbol);
         }
 
         function getBestAiMove() {
             let bestScore = -Infinity;
             let move = -1;
-
             for (let i = 0; i < 9; i++) {
                 if (boardState[i] === '') {
-                    boardState[i] = 'O';
+                    boardState[i] = aiSymbol;
                     let score = minimax(boardState, 0, false);
                     boardState[i] = '';
                     if (score > bestScore) {
@@ -414,15 +646,15 @@
 
         function minimax(board, depth, isMaximizing) {
             let result = evaluateBoard(board);
-            if (result === 'O') return 10 - depth;
-            if (result === 'X') return depth - 10;
+            if (result === aiSymbol) return 10 - depth;
+            if (result === userSymbol) return depth - 10;
             if (result === 'tie') return 0;
 
             if (isMaximizing) {
                 let bestScore = -Infinity;
                 for (let i = 0; i < 9; i++) {
                     if (board[i] === '') {
-                        board[i] = 'O';
+                        board[i] = aiSymbol;
                         let score = minimax(board, depth + 1, false);
                         board[i] = '';
                         bestScore = Math.max(score, bestScore);
@@ -433,7 +665,7 @@
                 let bestScore = Infinity;
                 for (let i = 0; i < 9; i++) {
                     if (board[i] === '') {
-                        board[i] = 'X';
+                        board[i] = userSymbol;
                         let score = minimax(board, depth + 1, true);
                         board[i] = '';
                         bestScore = Math.min(score, bestScore);
@@ -468,15 +700,11 @@
             }
 
             if (roundWon) {
-                const winnerName = currentPlayer === 'X' ? p1Name : p2Name;
+                const winnerName = currentPlayer === userSymbol ? p1Name : p2Name;
                 statusText.textContent = `🎉 الفائز هو ${winnerName}!`;
                 drawWinningLine(winIndex);
 
-                if (currentPlayer === 'X') {
-                    scores.p1++;
-                } else {
-                    scores.p2++;
-                }
+                if (currentPlayer === userSymbol) scores.p1++; else scores.p2++;
                 updateScoreUI();
                 isGameActive = false;
                 return;
@@ -495,7 +723,7 @@
         }
 
         function updateTurnUI() {
-            if (currentPlayer === 'X') {
+            if (currentPlayer === userSymbol) {
                 statusText.textContent = `دور: ${p1Name}`;
                 boxP1.classList.add('active');
                 boxP2.classList.remove('active');
@@ -522,18 +750,33 @@
         }
 
         function restartGame() {
-            boardState = ['', '', '', '', '', '', '', '', ''];
-            currentPlayer = 'X';
-            isGameActive = true;
-            winningLine.style.opacity = '0';
+            if (gameMode === 'online') {
+                db.ref('rooms/' + currentRoomId).update({
+                    boardState: ['', '', '', '', '', '', '', '', ''],
+                    currentPlayer: 'X',
+                    isGameActive: true,
+                    winner: null,
+                    winIndex: null
+                });
+            } else {
+                boardState = ['', '', '', '', '', '', '', '', ''];
+                currentPlayer = 'X';
+                isGameActive = true;
+                winningLine.style.opacity = '0';
 
-            cells.forEach(cell => {
-                cell.textContent = '';
-                cell.classList.remove('x', 'o');
-            });
+                cells.forEach(cell => {
+                    cell.textContent = '';
+                    cell.classList.remove('x', 'o');
+                });
 
-            updateTurnUI();
+                updateTurnUI();
+
+                if (gameMode === 'ai' && aiSymbol === 'X') {
+                    isGameActive = false;
+                    setTimeout(makeAiMove, 350);
+                }
+            }
         }
     </script>
 </body>
-  </html>
+</html>
